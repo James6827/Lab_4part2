@@ -1,0 +1,52 @@
+import machine
+import time
+
+# Define GPIO pins for shift register control
+SER = machine.Pin(20, machine.Pin.OUT)    # DS - Serial Data Input
+SRCLK = machine.Pin(18, machine.Pin.OUT)  # SHCP - Shift Register Clock
+RCLK = machine.Pin(19, machine.Pin.OUT)   # STCP - Storage Register Clock
+OE = machine.Pin(21, machine.Pin.OUT)     # OE - Output Enable
+
+# Initialize control pins
+OE.value(0)  # Enable output (active low)
+SRCLK.value(0)  # Initialize shift register clock to LOW
+RCLK.value(0)  # Initialize storage register clock to LOW
+
+def shift_out(data):
+    """Send 16 bits of data to the shift register."""
+    for bit in data:  # Loop through each bit in the data
+        SER.value(bit)  # Set the data bit on DS
+        SRCLK.value(1)  # Pulse shift register clock HIGH
+        time.sleep_us(1)  # Small delay for stability
+        SRCLK.value(0)  # Set clock back to LOW
+
+    # Store the shifted bits into the storage register
+    RCLK.value(1)  # Pulse storage register clock HIGH
+    time.sleep_us(1)  # Small delay for stability
+    RCLK.value(0)  # Set storage clock back to LOW
+
+def light_all_leds_clockwise():
+    """Light up each LED in a clockwise sequence, one by one."""
+    led_states = [0] * 16  # Start with all LEDs OFF
+
+    # Clockwise order: Westbound (12-15), Southbound (8-11), Eastbound (4-7), Northbound (0-3)
+    order = [12, 13, 14, 15,  # Westbound: White, Green, Yellow, Red
+             8, 9, 10, 11,     # Southbound: White, Green, Yellow, Red
+             4, 5, 6, 7,       # Eastbound: White, Green, Yellow, Red
+             0, 1, 2, 3]       # Northbound: White, Green, Yellow, Red
+
+    # Iterate through each LED in the specified order
+    for index in order:
+        led_states[index] = 1  # Turn ON the current LED
+        shift_out(led_states)  # Send the updated LED states to the shift register
+        time.sleep(5)  # Wait 5 seconds before moving to the next LED
+
+    # At the end, all LEDs will remain ON
+    print("All 16 LEDs are now ON.")
+
+# Run the sequence once to light all LEDs
+light_all_leds_clockwise()
+
+# Infinite loop to maintain the final state
+while True:
+    time.sleep(1)  # Keep the program running indefinitely
